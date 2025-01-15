@@ -1,0 +1,314 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Gear Galaxy</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+            text-align: center;
+            background-image: url('shape3.jpg');
+            background-repeat: no-repeat;
+            background-size: cover;
+           
+          
+        }
+
+        .wrapper {
+            width: 100%;
+            height: 100%;
+            margin: 0 auto;
+            overflow: hidden;
+            font-size: x-large;
+            background-color: #166ad0;
+            border: 20px solid #166ad0;
+            color:#c9c9c9;
+          font-weight: bold;
+         
+         
+           
+        }
+
+        .controls {
+            padding: 30px;
+            background-color: #f7f7f7;
+            border: 1px solid #ddd;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+
+        .controls label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        .controls input[type="range"],
+        .controls select,
+        .controls input[type="color"] {
+            width: 100%;
+            margin: 5px 0 15px;
+        }
+
+        .controls button {
+            background-color: #0080FF;
+            color: #FFFFFF;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+
+        .controls button:hover {
+            background-color: #005C9D;
+        }
+
+        canvas {
+            border: 2px solid #ddd;
+            margin: 20px auto;
+            display: block;
+            border-radius: 8px;
+            background-color: #d6d6d6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding-top: 120px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="wrapper">
+                <a <b>Gear Galaxy</b></a>
+            </div>
+           
+            
+    </header>
+
+    <div class="container">
+        <div class="controls">
+            <label>Shape:</label>
+            <select id="shapeSelect">
+                <option value="circle">Circle</option>
+                <option value="rectangle">Rectangle</option>
+                <option value="square">Square</option>
+                <option value="triangle">Triangle</option>
+                <option value="polygon">Polygon</option>
+            </select>
+
+            <label>Color:</label>
+            <input type="color" id="colorPicker" value="#ff0000">
+
+            <label>Wave Amplitude:</label>
+            <input type="range" id="amplitude" min="1" max="50" value="10">
+
+            <label>Wave Frequency:</label>
+            <input type="range" id="frequency" min="1" max="10" value="3">
+
+            <button onclick="drawShape()">Draw Shape</button>
+            <button onclick="toggleWaveAnimation()">Toggle Wavy Movement</button>
+        </div>
+
+        <canvas id="canvas" width="500" height="500"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        let shapeType = "circle";
+        let color = "#ff0000";
+        let vertices = [];
+        let animationFrameId = null;
+        let waveTime = 0;
+        let isWaving = false;
+        let isDragging = false;
+        let activeVertex = null;
+
+        const handleSize = 8;
+
+        function drawShape() {
+            shapeType = document.getElementById("shapeSelect").value;
+            color = document.getElementById("colorPicker").value;
+            vertices = calculateInitialVertices();
+            drawCanvas();
+        }
+
+        function calculateInitialVertices() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const size = 100;
+
+            switch (shapeType) {
+                case "circle":
+                    return createEllipseVertices(centerX, centerY, size / 2, size / 2);
+                case "rectangle":
+                case "square":
+                    return [
+                        { x: centerX - size / 2, y: centerY - size / 2 },
+                        { x: centerX + size / 2, y: centerY - size / 2 },
+                        { x: centerX + size / 2, y: centerY + size / 2 },
+                        { x: centerX - size / 2, y: centerY + size / 2 }
+                    ];
+                case "triangle":
+                    return [
+                        { x: centerX, y: centerY - size / 2 },
+                        { x: centerX - size / 2, y: centerY + size / 2 },
+                        { x: centerX + size / 2, y: centerY + size / 2 }
+                    ];
+                case "polygon":
+                    return createPolygonVertices(centerX, centerY, size / 2, 6);
+                default:
+                    return [];
+            }
+        }
+
+        function createEllipseVertices(cx, cy, rx, ry, segments = 16) {
+            const vertices = [];
+            for (let i = 0; i < segments; i++) {
+                const angle = (i * 2 * Math.PI) / segments;
+                vertices.push({
+                    x: cx + rx * Math.cos(angle),
+                    y: cy + ry * Math.sin(angle)
+                });
+            }
+            return vertices;
+        }
+
+        function createPolygonVertices(cx, cy, radius, sides) {
+            const vertices = [];
+            for (let i = 0; i < sides; i++) {
+                const angle = (i * 2 * Math.PI) / sides;
+                vertices.push({
+                    x: cx + radius * Math.cos(angle),
+                    y: cy + radius * Math.sin(angle)
+                });
+            }
+            return vertices;
+        }
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = color;
+
+            ctx.beginPath();
+            vertices.forEach((vertex, index) => {
+                if (index === 0) {
+                    ctx.moveTo(vertex.x, vertex.y);
+                } else {
+                    ctx.lineTo(vertex.x, vertex.y);
+                }
+            });
+            ctx.closePath();
+            ctx.fill();
+
+            drawHandles();
+        }
+
+        function drawHandles() {
+            ctx.fillStyle = "black";
+            vertices.forEach(vertex => {
+                ctx.fillRect(vertex.x - handleSize / 2, vertex.y - handleSize / 2, handleSize, handleSize);
+            });
+        }
+
+        function toggleWaveAnimation() {
+            isWaving = !isWaving;
+
+            if (isWaving) {
+                animateWave();
+            } else {
+                cancelAnimationFrame(animationFrameId);
+                vertices.forEach(vertex => {
+                    vertex.x = vertex.originalX || vertex.x;
+                    vertex.y = vertex.originalY || vertex.y;
+                });
+                drawCanvas();
+            }
+        }
+
+        function animateWave() {
+            const amplitude = parseFloat(document.getElementById("amplitude").value);
+            const frequency = parseFloat(document.getElementById("frequency").value);
+
+            waveTime += 0.05;
+
+            vertices.forEach((vertex, index) => {
+                const originalX = vertex.originalX || vertex.x;
+                const originalY = vertex.originalY || vertex.y;
+
+                vertex.x = originalX + amplitude * Math.sin(waveTime + index * frequency);
+                vertex.y = originalY + amplitude * Math.cos(waveTime + index * frequency);
+
+                vertex.originalX = originalX;
+                vertex.originalY = originalY;
+            });
+
+            drawCanvas();
+            if (isWaving) animationFrameId = requestAnimationFrame(animateWave);
+        }
+
+        function getMousePos(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (event.clientX || event.touches[0].clientX) - rect.left;
+            const y = (event.clientY || event.touches[0].clientY) - rect.top;
+            return { x, y };
+        }
+
+        function getVertexUnderMouse(x, y) {
+            return vertices.find(vertex => 
+                x >= vertex.x - handleSize / 2 &&
+                x <= vertex.x + handleSize / 2 &&
+                y >= vertex.y - handleSize / 2 &&
+                y <= vertex.y + handleSize / 2
+            );
+        }
+
+        canvas.addEventListener("mousedown", startDragging);
+        canvas.addEventListener("mousemove", dragVertex);
+        canvas.addEventListener("mouseup", stopDragging);
+        canvas.addEventListener("touchstart", startDragging, { passive: false });
+        canvas.addEventListener("touchmove", dragVertex, { passive: false });
+        canvas.addEventListener("touchend", stopDragging);
+
+        function startDragging(e) {
+            const pos = getMousePos(e);
+            const vertex = getVertexUnderMouse(pos.x, pos.y);
+            
+            if (vertex) {
+                isDragging = true;
+                activeVertex = vertex;
+            }
+        }
+
+        function dragVertex(e) {
+            if (!isDragging || !activeVertex) return;
+
+            e.preventDefault();
+            const pos = getMousePos(e);
+
+            activeVertex.x = Math.min(Math.max(pos.x, handleSize / 2), canvas.width - handleSize / 2);
+            activeVertex.y = Math.min(Math.max(pos.y, handleSize / 2), canvas.height - handleSize / 2);
+
+            drawCanvas();
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            activeVertex = null;
+        }
+
+        drawShape(); 
+    </script>
+</body>
+</html>
